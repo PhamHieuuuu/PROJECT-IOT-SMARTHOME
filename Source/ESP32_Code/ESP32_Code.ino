@@ -11,26 +11,6 @@
 #include <time.h>
 #include <LiquidCrystal_I2C.h>
 
-
-
-/* Cấu hình WIFI ESP32 ở chế độ AP
-  WiFi.softAP("IOT Home", "88888888");
-  Truy cập địa chỉ: 192.168.4.1 cấu hình WIFI
-*/
-
-LiquidCrystal_I2C lcd(0x27, 16, 2); 
-byte degreeSymbol[8] = {
-  B00111,
-  B00101,
-  B00111,
-  B00000,
-  B00000,
-  B00000,
-  B00000,
-  B00000
-};// ký tự *C
-
-
 bool relayState[] = {false, false, false, false, false, false};  // Trạng thái của 6 relay
 #define relay1 23    
 #define relay2 19
@@ -59,200 +39,15 @@ String trangthairelay[] = {
 #define SCREEN_ADDRESS 0x3C 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-const char* PARAM_SSID = "ssid";        // 👈 trùng với name="ssid" trong <input>
-const char* PARAM_PASS = "password";    // 👈 trùng với name="password" trong <input>
-
-// CallMeBot
-#define User "@hieu_esp32"  // Tên user cần thức hiện tin nhắn/cuộc gọi cảnh báo Telegram
-
 unsigned long lastReconnectAttempt = 0;
 const unsigned long reconnectInterval = 5000;
 
 AsyncWebServer server(80);
 Preferences preferences;
 
-// CallMeBot
-#define User "@hieu_esp32"  // Tên user cần thức hiện tin nhắn/cuộc gọi cảnh báo Telegram
-
-// Thông tin Firebase
-#define FIREBASE_HOST "https://iothome-esp32-default-rtdb.asia-southeast1.firebasedatabase.app/"
-#define FIREBASE_AUTH "RHrjnv1jw5jLTZ9yuwAAbmXlox1DSs5DWN2GqVCw"
-
 FirebaseData firebaseData;
 FirebaseAuth auth;
 FirebaseConfig config;
-
-// Giao diện HTML Để Lấy Cấu Hình WIFI khi vào AP
-const char htmlPage[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <title>Cấu Hình WiFi ESP32</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      margin: 0;
-      padding: 0;
-      text-align: center;
-    }
-    .header h1, .header h2 {
-      margin: 5px 0;
-      color: #007bff;
-    }
-    .container {
-      width: 90vw;
-      max-width: 400px;
-      margin: 20px auto;
-      padding: 20px;
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    h2 {
-      color: #333;
-      font-size: 1.5em;
-    }
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      font-size: 1em;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      box-sizing: border-box;
-    }
-    .password-container {
-      position: relative;
-    }
-    .toggle-password {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      cursor: pointer;
-    }
-    button {
-      background: #28a745;
-      color: white;
-      border: none;
-    }
-    button:hover {
-      background: #218838;
-    }
-    .footer {
-      margin-top: 15px;
-      font-size: 0.9em;
-      color: #666;
-    }
-    .footer a {
-      color: #007bff;
-      text-decoration: none;
-    }
-    .footer a:hover {
-      text-decoration: underline;
-    }
-    .eye {
-      width: 24px;
-      height: 24px;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="header">
-    <h1>HỆ THỐNG IOT HOME</h1>
-    <h2>QUẢN LÝ & ĐIỀU KHIỂN</h2>
-  </div>
-
-  <div class="container">
-    <h2>Cấu Hình WiFi ESP32</h2>
-    <form action="/save" method="POST">
-      <input type="text" name="ssid" placeholder="Tên WiFi (SSID)" required>
-      <div class="password-container">
-        <input type="password" id="password" name="password" placeholder="Mật khẩu WiFi" required>
-        <span class="toggle-password" onclick="togglePassword()">
-          <svg id="eyeIcon" class="eye" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path class="eye-path" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle class="eye-circle" cx="12" cy="12" r="3"/>
-          </svg>
-        </span>
-      </div>
-      <button type="submit">Lưu</button>
-    </form>
-    <div class="footer">
-      <p>Thiết kế bởi Duy Hưng</a></p>
-    </div>
-  </div>
-
-  <script>
-    function togglePassword() {
-      const pwd = document.getElementById("password");
-      const eyeIcon = document.getElementById("eyeIcon");
-      const eyePath = eyeIcon.querySelector(".eye-path");
-      const eyeCircle = eyeIcon.querySelector(".eye-circle");
-
-      if (pwd.type === "password") {
-        pwd.type = "text";
-        eyeIcon.setAttribute("stroke", "white");
-        eyeIcon.setAttribute("fill", "blue");
-        eyePath.setAttribute("stroke", "white");
-        eyeCircle.setAttribute("stroke", "white");
-      } else {
-        pwd.type = "password";
-        eyeIcon.setAttribute("stroke", "black");
-        eyeIcon.setAttribute("fill", "none");
-        eyePath.setAttribute("stroke", "black");
-        eyeCircle.setAttribute("stroke", "black");
-      }
-    }
-  </script>
-</body>
-</html>
-)rawliteral";
-
-// Giao diện thông báo sau khi cấu hình thành công
-const char successPage[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Đã lưu cấu hình</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding-top: 60px;
-      background-color: #f0f0f0;
-      margin: 0;
-    }
-    .message-box {
-      display: inline-block;
-      padding: 25px 30px;
-      background-color: #fff;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    h2 {
-      color: #28a745;
-      margin-bottom: 10px;
-    }
-    p {
-      color: #333;
-    }
-  </style>
-</head>
-<body>
-  <div class="message-box">
-    <h2>✅ Đã lưu cấu hình thành công!</h2>
-    <p>ESP32 sẽ khởi động lại trong giây lát...</p>
-  </div>
-</body>
-</html>
-)rawliteral";
 
 // Lưu cấu hình đã nhập 
 void handleSave(AsyncWebServerRequest *request) {
@@ -360,7 +155,7 @@ void setup() {
     Serial.print("🔄 Đang kết nối WiFi: ");
     Serial.println(ssid);
     if (WiFi.waitForConnectResult() == WL_CONNECTED) {
-      Serial.println("✅ Kết nối WiFi thành công!");
+      Serial.println(" Kết nối WiFi thành công!");
       // Khởi tạo Firebase
       Firebase.begin(&config, &auth);
       Firebase.reconnectWiFi(true);
@@ -402,7 +197,7 @@ void sendTelagramCall(String message) {
 
         http.end();
     } else {
-        Serial.println("⚠️ WiFi chưa kết nối!");
+        Serial.println("⚠ WiFi chưa kết nối!");
     }
 }
 
@@ -505,7 +300,6 @@ void handleSensorFirebase() {
       if (sendFlag == 1) {
         String currentTime = getTimeFromNTP();
         sendFirebase("/Gas", 1);
-        sendTelagramCall("🔥Phát+hiện+khí+gas!%0A+++++Kiểm+tra+ngay!%0A🕒Thời+gian:+" + currentTime );
         sendFlag = 0;
       }
     }
@@ -601,9 +395,9 @@ void loop() {
     Firebase.reconnectWiFi(true);
     configTime(7 * 3600, 0, "pool.ntp.org", "time.google.com", "time.cloudflare.com");//ESP32 kết nối NTP Server và lấy thời gian một lần duy nhất. khi khởi động
     FlagConfi = true;
-    // Serial.println("✅ WiFi OK ");
+    // Serial.println(" WiFi OK ");
   } else if(WiFi.status() != WL_CONNECTED) {
-    Serial.println("⚠️ Chưa có WiFi. Chờ kết nối lại...");
+    Serial.println(" Chưa có WiFi. Chờ kết nối lại...");
     reconnectWiFi();
   }
 

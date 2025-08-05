@@ -13,20 +13,7 @@ Phím 5: 3810328320
 Phím 6: 2774204160
 Phím Play: 3927310080
 */
-//  LCD SDA-A4  |  SCL-A5
 
-/*
-       KẾT NỐI
-Arduino        Ngoại vi
-D2-D9   ----   Keypad 4x4
-D10     ----   DHT11
-D11     ----   Gas
-D12     ----   Servo
-A0      ----   Buzz
-A3      ----   IR
-A4-A5   ----   I2C
-A1      ----   Button ADC
-*/
 #define Buzz A0
 #define Button A1
 #define Ir A3
@@ -72,8 +59,6 @@ void setup() {
 
   dc.attach(12);
   dc.write(0);
-
-
 }
 
 void Coi(int ms){
